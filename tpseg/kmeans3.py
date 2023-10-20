@@ -16,9 +16,9 @@ from sklearn.utils import shuffle
 from time import time
 from skimage.io import imread
 
-n_colors = 4
+n_colors_list = [10]
 
-ima = imread("fleur.tif")
+ima = imread("carte.tif")
 
 # Convert to floats instead of the default 8 bits integer coding. Dividing by
 # 255 is important so that plt.imshow behaves works well on float data (need to
@@ -30,40 +30,29 @@ w, h, d = original_shape = tuple(ima.shape)
 assert d == 3
 image_array = np.reshape(ima, (w * h, d))
 
-print("Fitting model on a small sub-sample of the data")
-t0 = time()
-image_array_sample = shuffle(image_array, random_state=0)[:1000]
-kmeans = KMeans(n_clusters=n_colors, random_state=0).fit(image_array_sample)
-print("done in %0.3fs." % (time() - t0))
+# Create a figure with the original image and the compressed images
 
-# Get labels for all points
-print("Predicting color indices on the full image (k-means)")
-t0 = time()
-labels = kmeans.predict(image_array)
-print("done in %0.3fs." % (time() - t0))
-
-def recreate_image(codebook, labels, w, h):
-    """Recreate the (compressed) image from the code book & labels"""
-    d = codebook.shape[1]
-    image = np.zeros((w, h, d))
-    label_idx = 0
-    for i in range(w):
-        for j in range(h):
-            image[i][j] = codebook[labels[label_idx]]
-            label_idx += 1
-    return image
-
-# Display all results, alongside original image
-plt.figure(1)
-plt.clf()
-plt.axis('off')
-plt.title('Original image')
 plt.imshow(ima)
 
-plt.figure(2)
-plt.clf()
-plt.axis('off')
-plt.title('Quantized image with K-Means: %i colours' %n_colors)
-plt.imshow(recreate_image(kmeans.cluster_centers_, labels, w, h))
-plt.show()
 
+for i, n_colors in enumerate(n_colors_list):
+    print("Fitting model on a small sub-sample of the data with n_colors={}".format(n_colors))
+    t0 = time()
+    image_array_sample = shuffle(image_array, random_state=0)[:1000]
+    kmeans = KMeans(n_clusters=n_colors, random_state=0).fit(image_array_sample)
+    print("done in %0.3fs." % (time() - t0))
+
+    # Get labels for all points
+    print("Predicting color indices on the full image (k-means) with n_colors={}".format(n_colors))
+    t0 = time()
+    labels = kmeans.predict(image_array)
+    print("done in %0.3fs." % (time() - t0))
+
+    # Recreate the compressed image from the code book & labels
+    recreated_image = recreate_image(kmeans.cluster_centers_, labels, w, h)
+
+    # Show the compressed image
+    plt.imshow(recreated_image)
+
+    plt.show()
+# Show the figure

@@ -1,88 +1,62 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-Created on 22 May 2019
-
-@author: M Roux
-"""
-
-
 import matplotlib.pyplot as plt
-from skimage import data, filters
-from skimage import io as skio
-from scipy import ndimage
-import mrlab as mr
+import numpy as np
+from skimage import io, filters, morphology
 
-# POUR LA MORPHO
-import skimage.morphology as morpho  
-import skimage.feature as skf
-from scipy import ndimage as ndi
+# Load the image
+image = io.imread('spot.tif')
 
-
-def tophat(im,rayon):
-    se=morpho.square(rayon)
-    ero=morpho.erosion(im,se)
-    dil=morpho.dilation(ero,se)
-    tophat=im-dil
+# Define the radius, low threshold, and high threshold values to test
+radius_values = [5]
+low_values = [0.5,3,5,10]
+high_values = [3]
+def tophat(image, radius):
+    se=morphology.square(radius)
+    ero=morphology.erosion(image,se)
+    dil=morphology.dilation(ero,se)
+    tophat=dil-image
     return tophat
-    
-fig, ax = plt.subplots(nrows=2, ncols=3)
 
-ima = skio.imread('spot.tif');
-rayon=2
-top=tophat(ima,rayon)
+overlays = []
 
-low = 3
-high = 5
+# Loop over the radius, low threshold, and high threshold values
+for i, radius in enumerate(radius_values):
+    for j, low in enumerate(low_values):
+        for k, high in enumerate(high_values):
+            # Apply the top-hat transform with the current parameters
+            top=tophat(image,radius)
+            lowt = (top > low).astype(int)
+            hight = (top > high).astype(int)
+            hyst = filters.apply_hysteresis_threshold(top, low, high)
 
-import tempfile
-import IPython
+            # Create an overlayed image showing the hysteresis threshold
+            overlay = np.zeros_like(image)
+            overlay[hyst] = 1
+            overlay = filters.gaussian(overlay, sigma=2)
+            overlays.append(overlay)
 
-def viewimage(im, normalize=True,titre='',displayfilename=False):
-    imin=im.copy().astype(np.float32)
-    if normalize:
-        imin-=imin.min()
-        if imin.max()>0:
-            imin/=imin.max()
-    else:
-        imin=imin.clip(0,255)/255
+            # Create a figure with the original image and the top-hat transform
+            fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(8, 8))
+            fig.suptitle('Hysteresis threshold with radius={}, low={}, high={}'.format(radius, low, high))
+            ax = axes.ravel()
+            ax[0].imshow(image, cmap='gray')
+            ax[0].set_title('Original image')
+            ax[1].imshow(top, cmap='magma')
+            ax[1].set_title('Top-hat transform')
+
+            ax[2].imshow(lowt, cmap='magma')
+            ax[2].set_title('Low threshold')
+            ax[3].imshow(hight, cmap='magma')
+            ax[3].set_title('High threshold')
+            ax[4].imshow(hyst, cmap='magma')
+            ax[4].set_title('Hysteresis threshold')
+            ax[5].imshow(image, cmap='magma')
+            ax[6].imshow(hyst, cmap='jet', alpha=0.5)
+            ax[6].set_title('Overlay')
+
+            # Adjust the spacing between subplots
+            plt.subplots_adjust(wspace=0.4, hspace=0.4)
+
+            # Show the figures
+            plt.show()
         
-    
-    imin=(imin*255).astype(np.uint8)
-    filename=tempfile.mktemp(titre+'.png')
-    if displayfilename:
-        print (filename)
-    plt.imsave(filename, imin, cmap='gray')
-    IPython.display.display(IPython.display.Image(filename))
-    
-viewimage(ima)
-
-lowt = (top > low).astype(int)
-hight = (top > high).astype(int)
-hyst = filters.apply_hysteresis_threshold(top, low, high)
-
-
-ax[0, 0].imshow(ima, cmap='gray')
-ax[0, 0].set_title('Original image')
-
-ax[0, 1].imshow(top, cmap='magma')
-ax[0, 1].set_title('Tophat filter')
-
-ax[1, 0].imshow(lowt, cmap='magma')
-ax[1, 0].set_title('Low threshold')
-
-ax[1, 1].imshow(hight, cmap='magma')
-ax[1, 1].set_title('High threshold')
-
-ax[0, 2].imshow(hyst, cmap='magma')
-ax[0, 2].set_title('Hysteresis')
-
-ax[1, 2].imshow(hight + hyst, cmap='magma')
-ax[1, 2].set_title('High + Hysteresis')
-
-for a in ax.ravel():
-    a.axis('off')
-
-plt.tight_layout()
-
-plt.show()
+ 

@@ -15,18 +15,45 @@ from sklearn.utils import shuffle
 from time import time
 from skimage.io import imread
 
-n_class = 2
+n_class = 3
 
-ima=imread('cell.tif')
+ima=imread('muscle.tif')
 # Convert to floats instead of the default 8 bits integer coding. Dividing by
 # 255 is important so that plt.imshow behaves works well on float data (need to
 # be in the range [0-1])
 ima = np.array(ima, dtype=np.float64) / 255
 
+def median_filter(ima):
+    nl,nc=ima.shape
+    ima2=np.zeros((nl,nc))
+    for i in range(1,nl-1):
+        for j in range(1,nc-1):
+            ima2[i,j]=np.median(ima[i-1:i+2,j-1:j+2])
+    return ima2
+def gaussian_filter(ima):
+    nl,nc=ima.shape
+    ima2=np.zeros((nl,nc))
+    for i in range(1,nl-1):
+        for j in range(1,nc-1):
+            ima2[i,j]=np.sum(ima[i-1:i+2,j-1:j+2]*np.array([[1,2,1],[2,4,2],[1,2,1]]))/16
+    return ima2
+
+def filte_moyenneur(ima):
+    nl,nc=ima.shape
+    ima2=np.zeros((nl,nc))
+    for i in range(1,nl-1):
+        for j in range(1,nc-1):
+            ima2[i,j]=np.sum(ima[i-1:i+2,j-1:j+2])/9
+    return ima2
+
+
 # Load Image and transform to a 2D numpy array.
 w, h = original_shape = tuple(ima.shape)
 d = 1
+ima=filte_moyenneur(ima)
+ima=median_filter(ima)
 image_array = np.reshape(ima, (w * h, d))
+
 
 print("Fitting model on a small sub-sample of the data")
 t0 = time()
